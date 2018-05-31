@@ -60,7 +60,7 @@ class SortOfCLEVRDataset(Dataset):
 
 def main():
 	curr_dir = os.path.dirname(os.path.realpath(__file__))
-	data_path = os.path.join(curr_dir, '..', 'data', 'sort-of-clevr.h5')
+	data_path = os.path.join(curr_dir, 'data', 'sort-of-clevr.h5')
 
 	dataset = SortOfCLEVRDataset(data_path)
 

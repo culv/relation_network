@@ -1,7 +1,7 @@
 # import model, dataset, and data generator
 from model import RelationNetwork
 from dataset import SortOfCLEVRDataset
-from generator import show_sample
+from generator import SortOfCLEVRGenerator, show_sample
 from visdom_utils import VisdomLinePlotter
 
 # import PyTorch & NumPy
@@ -36,22 +36,29 @@ def main():
 	hyper = {	'batch_size': 2,
 				'lr': 0.005		}
 
-	model = RelationNetwork(hyper) # create RN
-	# use GPU if available
-	if CUDA:
-		model.cuda()
-		print('GPU available - will default to using GPU')
-	else:
-		print('GPU unavailable - will default to using CPU')
-
 
 	# get full path to HDF5 file of data
 	curr_dir = os.path.dirname(os.path.realpath(__file__))
-	data_dir = os.path.join(curr_dir, '..', 'data')
+	data_dir = os.path.join(curr_dir, 'data')
 	data_fname = 'sort-of-clevr.h5'
-	full_data_path = os.path.join(data_dir, data_fname)
 
+
+	# create dataset of it doesn't already exist
+	if not os.path.exists(data_dir):
+		print('Creating dataset...')
+		gen = SortOfCLEVRGenerator()
+		made_data = gen.create_dataset(train_size=8, test_size=0)
+
+		print('Saving dataset...')
+		os.makedirs(data_dir)
+		gen.save_dataset(made_data, data_dir, data_fname)
+
+
+	full_data_path = os.path.join(data_dir, data_fname)
 	dataset = SortOfCLEVRDataset(full_data_path)	# create pytorch Dataset object
+	print('Dataset loaded')
+
+
 
 	# create pytorch DataLoader object with proper batch size
 	loader = DataLoader(dataset, batch_size=hyper['batch_size'], shuffle=True, num_workers=1)
@@ -64,8 +71,18 @@ def main():
 	iters = int(dataset.__len__() / hyper['batch_size']) # of batches per epoch
 
 
-	vis = Visdom(port=PORT)
+	model = RelationNetwork(hyper) # create RN
+	# use GPU if available
+	if CUDA:
+		model.cuda()
+		print('GPU available - will default to using GPU')
+	else:
+		print('GPU unavailable - will default to using CPU')
 
+
+
+	# start Visdom
+	vis = Visdom(port=PORT)
 	# check if Visdom server is available
 	if vis.check_connection():
 		print('Visdom server is online - will log data ')
@@ -93,6 +110,7 @@ def main():
 			labels = torch.argmax(batch['labels'], 2) 	# convert from one-hot labels to class index
 														# (required by torch's cross entropy loss)
 
+			# every iteration, reset relational and nonrelational accuracy trackers
 			rel_acc = 0
 			nonrel_acc = 0
 
@@ -103,10 +121,13 @@ def main():
 				if q%2==0:		rel_acc+=float(acc)/(num_questions/2)
 				else:			nonrel_acc+=float(acc)/(num_questions/2)
 
-			loss_log.update(it, [float(loss)])
-			acc_log.update(it, [rel_acc, nonrel_acc])
+			loss_log.update(it+epoch*iters, [float(loss)])
+			acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc])
 
-		print('[Epoch {0:d}] loss={0:.2f}, rel acc={0:.2f}%, nonrel acc={0:.2f}%\n'.format(epoch, float(loss), rel_acc, nonrel_acc))
+		print('[Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(loss), rel_acc, nonrel_acc))
+		model.save_model(epoch)
+		print('Saved model\n')
+
 
 if __name__ == '__main__':
 	main()

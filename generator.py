@@ -204,13 +204,13 @@ class SortOfCLEVRGenerator(object):
 
 
 	# save dataset efficiently in HDF5 binary format with h5py library
-	def save_dataset(self, dataset_dict, data_dir='./data', fname='sort-of-clevr'):
+	def save_dataset(self, dataset_dict, data_dir='./data', fname='sort-of-clevr.h5'):
 		# if data directory doesn't exist, make it
 		if not os.path.exists(data_dir):
 			os.makedirs(data_dir)
 
 		# full path of file + HDF5 file extension
-		full_fname = os.path.join(data_dir, fname) + '.h5'
+		full_fname = os.path.join(data_dir, fname)
 
 		f = h5.File(full_fname, 'w') # open (data_dir)/(fname).hdf5 for writing
 
@@ -278,7 +278,6 @@ def show_sample(sample, size=4):
 		else: # odd plots (1st, 3rd, 5th, ...) pick random non-relational
 			rand_start = 1
 
-		# print(questions.shape[0])
 
 		rand_i = np.random.choice( np.arange(rand_start, questions.shape[1], 2) )
 		q, a = bit2string(questions[i][rand_i], answers[i][rand_i])
@@ -302,19 +301,20 @@ def main():
 	generator = SortOfCLEVRGenerator()#img_size=128)
 
 	curr_dir = os.path.dirname(os.path.realpath(__file__))
-	save_dir = os.path.join(curr_dir, '..', 'data')
+	data_dir = os.path.join(curr_dir, 'data')
+
+	if not os.path.exists(data_dir):
+		os.makedirs(data_dir)
 
 	make = True
 
 	if make:
-		# data = generator.create_batch(1)
+		dset = generator.create_dataset(train_size=8, test_size=0, val_size=0)
 
-		dset = generator.create_dataset(train_size=64, test_size=0, val_size=0)
-
-		generator.save_dataset(dset, data_dir=save_dir)
+		generator.save_dataset(dset, data_dir=data_dir)
 
 
-	file = os.path.join(save_dir, 'sort-of-clevr.h5')
+	file = os.path.join(data_dir, 'sort-of-clevr.h5')
 
 	d = h5.File(file, 'r')
 

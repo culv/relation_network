@@ -29,14 +29,6 @@ class CNN_Module(nn.Module):
 			nn.Conv2d(24,24,3,stride=2,padding=1),
 			nn.BatchNorm2d(24))
 
-		# self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1) # 3 input channels(RGB), 24 3x3 kernels (output 24 38x38 feature maps)
-		# self.batchnorm1 = nn.BatchNorm2d(24) # batch normalization on 24 feature maps
-		# self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1) # (output 24 51x51 feature maps)
-		# self.batchnorm2 = nn.BatchNorm2d(24)
-		# self.conv3 = nn.Conv2d(24, 24, 3, stride=2, padding=1) # (output 24 5x55 feature maps)
-		# self.batchnorm3 = nn.BatchNorm2d(24)
-		# self.conv4 = nn.Conv2d(24, 24, 3, stride=2, padding=1) # (output 24 16x16 feature maps)
-		# self.batchnorm4 = nn.BatchNorm2d(24)
 
 	# forward pass of conv net
 	def forward(self, im):
@@ -45,16 +37,6 @@ class CNN_Module(nn.Module):
 		x = self.layer3(x)
 		x = self.layer4(x)
 
-		# print('debug4')
-		# x = self.conv1(im) # first convolution on image
-		# print('debug5')
-		# x = self.batchnorm1(x)
-		# x = self.conv2(x)
-		# x = self.batchnorm2(x)
-		# x = self.conv3(x)
-		# x = self.batchnorm3(x)
-		# x = self.conv4(x)
-		# x = self.batchnorm4(x)
 		return x
 
 # parent class for CNN+RN and CNN+MLP architectures
@@ -87,7 +69,10 @@ class Generic_Model(nn.Module):
 
 	# save model during training
 	def save_model(self, epoch):
-		torch.save(self.state_dict(), 'models/{}_epoch_{:02d}'.format(self.name, epoch))
+		if not os.path.exists('./models'):
+			os.makedirs('./models')
+			print('Created models dir')
+		torch.save(self.state_dict(), './models/{}_epoch_{:02d}'.format(self.name, epoch))
 
 
 # define relation network (RN)
