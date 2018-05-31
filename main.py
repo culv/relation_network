@@ -1,28 +1,48 @@
+# import model, dataset, and data generator
 from model import RelationNetwork
 from dataset import SortOfCLEVRDataset
 from generator import show_sample
+from visdom_utils import VisdomLinePlotter
 
+# import PyTorch & NumPy
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+# import Visdom to examine training
+from visdom import Visdom
+from tqdm import tqdm # progress meter for loops!
+
+# import MatPlotLib for viewing dataset samples
 import matplotlib as mpl
 mpl.use('TkAgg') # use TkAgg backend to avoid segmentation fault
 import matplotlib.pyplot as plt
 
 import os
 import sys
+import time
+
+
+
+############################################################################################################
 
 
 def main():
+	PORT = 7777
+	CUDA = torch.cuda.is_available()
+	EPOCHS = 4
+
 	# hyperparameters for RN model
-	hyper = {	'batch_size': 64,
+	hyper = {	'batch_size': 2,
 				'lr': 0.005		}
 
-	model = RelationNetwork(hyper)
-	# params = model.parameters()
-	# for i, p in enumerate(params):
-	# 	print(i, p.shape)
-	# sys.exit()
+	model = RelationNetwork(hyper) # create RN
+	# use GPU if available
+	if CUDA:
+		model.cuda()
+		print('GPU available - will default to using GPU')
+	else:
+		print('GPU unavailable - will default to using CPU')
 
 
 	# get full path to HDF5 file of data
@@ -31,34 +51,62 @@ def main():
 	data_fname = 'sort-of-clevr.h5'
 	full_data_path = os.path.join(data_dir, data_fname)
 
-
 	dataset = SortOfCLEVRDataset(full_data_path)	# create pytorch Dataset object
 
 	# create pytorch DataLoader object with proper batch size
 	loader = DataLoader(dataset, batch_size=hyper['batch_size'], shuffle=True, num_workers=1)
 	batch = next(iter(loader))	# grab next batch
 
-	# fig, ax = show_sample(batch, size=4)
-	# plt.show()
 
-	imgs = batch['images'].float() # convert from double to float
-	qs = batch['questions'].float()
-	lbs = batch['labels']
-	lbs = torch.argmax(lbs, 2) # convert from one-hot vectors to class indices (required by torch's cross entropy loss)
+	num_questions = batch['questions'].shape[1] # total number of questions per image
 
 
-	rel_acc = 0
-	nonrel_acc = 0
-	for image in imgs:
-		for q in range(20):
-			loss, acc = model.train(imgs, qs[:,q,:], lbs[:,q])
-			if q%2==0:	rel_acc+=acc/10.
-			else:		nonrel_acc+=acc/10.
-		print('relational accuracy:\t{}%'.format(rel_acc))
-		rel_acc = 0
-		print('nonrelational accuracy:\t{}%'.format(nonrel_acc))
-		nonrel_acc = 0
+	iters = int(dataset.__len__() / hyper['batch_size']) # of batches per epoch
 
+
+	vis = Visdom(port=PORT)
+
+	# check if Visdom server is available
+	if vis.check_connection():
+		print('Visdom server is online - will log data ')
+	else:
+		print('Visdom server is offline - will not log data')
+
+
+	# create Visdom line plot for training loss
+	loss_log = VisdomLinePlotter(vis, color='orange', title='Training Loss', ylabel='loss', xlabel='iters', linelabel='CNN+RN')
+
+	# create Visdom line plot for training accuracy
+	acc_log = VisdomLinePlotter(vis, color='red', title='CNN+RN Training Accuracy', ylabel='accuracy (%)',
+								xlabel='iters', linelabel='relational')
+	acc_log.add_new(color='blue', linelabel='non-relational')
+
+
+	# training loop
+	for epoch in range(EPOCHS):
+
+		for it in tqdm(range(iters)):
+
+			batch = next(iter(loader)) # load next batch
+			imgs = batch['images'].float() # convert imgs to floats
+			questions = batch['questions'].float() # convert questions to floats
+			labels = torch.argmax(batch['labels'], 2) 	# convert from one-hot labels to class index
+														# (required by torch's cross entropy loss)
+
+			rel_acc = 0
+			nonrel_acc = 0
+
+			for q in range(num_questions): # forward and backward pass of model on a batch of images and SINGLE question
+				loss, acc = model.train(imgs, questions[:,q,:], labels[:,q])
+
+
+				if q%2==0:		rel_acc+=float(acc)/(num_questions/2)
+				else:			nonrel_acc+=float(acc)/(num_questions/2)
+
+			loss_log.update(it, [float(loss)])
+			acc_log.update(it, [rel_acc, nonrel_acc])
+
+		print('[Epoch {0:d}] loss={0:.2f}, rel acc={0:.2f}%, nonrel acc={0:.2f}%\n'.format(epoch, float(loss), rel_acc, nonrel_acc))
 
 if __name__ == '__main__':
 	main()

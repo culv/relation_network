@@ -296,6 +296,8 @@ def show_sample(sample, size=4):
 
 	return fig, axs
 
+##########################################################################################
+
 def main():
 	generator = SortOfCLEVRGenerator()#img_size=128)
 

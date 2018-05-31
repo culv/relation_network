@@ -1,5 +1,4 @@
 import torch
-print('Using PyTorch version '+torch.__version__)
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,13 +11,6 @@ import numpy as np
 import sys
 import os
 
-# check if GPU is available
-if torch.cuda.is_available():
-	print('GPU available: will run on GPU')
-	cuda = True
-else:
-	print('GPU unavailable: will run on CPU')
-	cuda = False
 
 # define CNN module (input to both RN and MLP)
 class CNN_Module(nn.Module):
@@ -125,6 +117,7 @@ class RelationNetwork(Generic_Model):
 		self.coord_oj = torch.FloatTensor(hyp['batch_size'], 2) # coordinates of object o_j
 
 		# send coords to GPU if available
+		cuda = torch.cuda.is_available()
 		if cuda:
 			self.coord_oi = self.coord_oi.cuda()
 			self.coord_oj = self.coord_oj.cuda()
@@ -208,12 +201,27 @@ class RelationNetwork(Generic_Model):
 		x_f = self.f_fc3(x_f)
 		return x_f
 
+##############################################################################################
+
 def main():
+	print('Using PyTorch version '+torch.__version__)
+
+	CUDA = torch.cuda.is_available()
+
+	# check if GPU is available
+	if CUDA:
+		print('GPU available: will run on GPU')
+	else:
+		print('GPU unavailable: will run on CPU')
+
+
 	hyper = {	'batch_size': 2,
 				'lr': 0.005		}
 
 	model = RelationNetwork(hyper)
 	print(model)
+
+
 
 if __name__ == '__main__':
 	main()

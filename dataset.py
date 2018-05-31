@@ -7,7 +7,6 @@ import h5py as h5
 import os
 import sys
 
-
 class ToTensor(object):
 	def __call__(self, sample):
 		for data in sample.keys():
@@ -28,11 +27,14 @@ class SortOfCLEVRDataset(Dataset):
 	def __len__(self):
 		d = h5.File(self.data_full_path, 'r') # load HDF5 dataset
 		# get length of dataset
-		for group in d.keys():
-			for dataset in d[group]:
-				length = d[group][dataset].shape[0]
+		if self.train:
+			for dataset in d['train']:
+				length = d['train'][dataset].shape[0]
 				break
-			break
+		else:
+			for dataset in d['test']:
+				length = d['test'][dataset].shape[0]
+				break
 
 		d.close()
 		return length
@@ -51,9 +53,10 @@ class SortOfCLEVRDataset(Dataset):
 
 
 		d.close()
-		
+
 		return self.transform(sample)
 
+############################################################################
 
 def main():
 	curr_dir = os.path.dirname(os.path.realpath(__file__))
