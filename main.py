@@ -33,7 +33,7 @@ def main():
 	EPOCHS = 4
 
 	# hyperparameters for RN model
-	hyper = {	'batch_size': 2,
+	hyper = {	'batch_size': 64,
 				'lr': 0.005		}
 
 
@@ -47,7 +47,7 @@ def main():
 	if not os.path.exists(data_dir):
 		print('Creating dataset...')
 		gen = SortOfCLEVRGenerator()
-		made_data = gen.create_dataset(train_size=8, test_size=0)
+		made_data = gen.create_dataset()#train_size=8, test_size=0)
 
 		print('Saving dataset...')
 		os.makedirs(data_dir)
@@ -121,8 +121,9 @@ def main():
 				if q%2==0:		rel_acc+=float(acc)/(num_questions/2)
 				else:			nonrel_acc+=float(acc)/(num_questions/2)
 
-			loss_log.update(it+epoch*iters, [float(loss)])
-			acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc])
+			if vis.check_connection():
+				loss_log.update(it+epoch*iters, [float(loss)])
+				acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc])
 
 		print('[Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(loss), rel_acc, nonrel_acc))
 		model.save_model(epoch)
