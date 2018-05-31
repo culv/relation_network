@@ -33,7 +33,7 @@ def main():
 	EPOCHS = 4
 
 	# hyperparameters for RN model
-	hyper = {	'batch_size': 64,
+	hyper = {	'batch_size': 2,
 				'lr': 0.005		}
 
 
@@ -98,6 +98,8 @@ def main():
 								xlabel='iters', linelabel='relational')
 	acc_log.add_new(color='blue', linelabel='non-relational')
 
+	print(iters)
+
 
 	# training loop
 	for epoch in range(EPOCHS):
@@ -105,10 +107,16 @@ def main():
 		for it in tqdm(range(iters)):
 
 			batch = next(iter(loader)) # load next batch
+
 			imgs = batch['images'].float() # convert imgs to floats
 			questions = batch['questions'].float() # convert questions to floats
 			labels = torch.argmax(batch['labels'], 2) 	# convert from one-hot labels to class index
 														# (required by torch's cross entropy loss)
+
+			if CUDA:
+				imgs = imgs.cuda()
+				questions = questions.cuda()
+				labels = labels.cuda()
 
 			# every iteration, reset relational and nonrelational accuracy trackers
 			rel_acc = 0
