@@ -191,11 +191,17 @@ class CNN_MLP(Generic_Model):
 		# (batch_size)*(24 filters)*5*5
 		self.MLP = nn.Sequential(
 			nn.Linear(24*5**2, 256),
+			nn.ReLU(),
 			nn.Linear(256,256),
+			nn.ReLU(),
 			nn.Linear(256,256),
+			nn.ReLU(),
 			nn.Linear(256,256),
+			nn.ReLU(),
 			nn.Linear(256,256),
+			nn.ReLU(),
 			nn.Linear(256,256),
+			nn.ReLU(),
 			nn.Linear(256,10))
 
 		self.optimizer = optim.Adam(self.parameters(), lr=hyp['lr']) # use Adam gradient descent

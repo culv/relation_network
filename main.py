@@ -83,7 +83,7 @@ def main():
 	# use GPU if available
 	if CUDA:
 		model.cuda()
-		model.MLP()
+		model_MLP.cuda()
 		print('GPU available - will default to using GPU')
 	else:
 		print('GPU unavailable - will default to using CPU')
