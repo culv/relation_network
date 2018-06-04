@@ -11,7 +11,6 @@ import numpy as np
 import sys
 import os
 
-
 # define CNN module (input to both RN and MLP)
 class CNN_Module(nn.Module):
 	def __init__(self):
@@ -28,7 +27,6 @@ class CNN_Module(nn.Module):
 		self.layer4 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
 			nn.BatchNorm2d(24))
-
 
 	# forward pass of conv net
 	def forward(self, im):
@@ -74,28 +72,33 @@ class Generic_Model(nn.Module):
 			print('Created models dir')
 		torch.save(self.state_dict(), './models/{}_epoch_{:02d}'.format(self.name, epoch))
 
-
 # define relation network (RN)
 # (inherits from parent class, Generic_Model)
 class RelationNetwork(Generic_Model):
 	def __init__(self, hyp):
-		super(RelationNetwork, self).__init__(hyp, 'RN')
+		super(RelationNetwork, self).__init__(hyp, 'CNN+RN')
 
 		self.conv = CNN_Module() # initialize conv net input module
 
 		# define g function of relation network
 		# input length is (#_filters_per_object + coord_of_object)*2 + question_vec
-		self.g_fc1 = nn.Linear((24+2)*2+11, 256)
-
-		self.g_fc2 = nn.Linear(256, 256)
-		self.g_fc3 = nn.Linear(256, 256)
-		self.g_fc4 = nn.Linear(256, 256)
+		self.g = nn.Sequential(
+			nn.Linear((24+2)*2+11, 256),
+			nn.ReLU(),
+			nn.Linear(256, 256),
+			nn.ReLU(),
+			nn.Linear(256, 256),
+			nn.ReLU(),
+			nn.Linear(256, 256))
 
 		# define f function of relation network
-		self.f_fc1 = nn.Linear(256, 256)
-		self.f_fc2 = nn.Linear(256, 256)
-		self.f_fc3 = nn.Linear(256, 10)
-
+		self.f = nn.Sequential(
+			nn.Linear(256, 256),
+			nn.ReLU(),
+			nn.Linear(256, 256),
+			nn.Dropout(),
+			nn.ReLU(),
+			nn.Linear(256, 10))
 
 
 		self.coord_oi = torch.FloatTensor(hyp['batch_size'], 2) # FloatTensor to hold (batch_size) 2-dim coordinates of object o_i
@@ -165,26 +168,54 @@ class RelationNetwork(Generic_Model):
 
 		x_full = torch.cat([x_i, x_j], 3) # concatenate object pairs, shape (batch_size)x25x25x63
 
-		x_ = x_full.view(batches*(d**4), 63) # flatten into 1d vector
-		x_ = self.g_fc1(x_)
-		x_ = F.relu(x_)
-		x_ = self.g_fc2(x_)
-		x_ = F.relu(x_)
-		x_ = self.g_fc3(x_)
-		x_ = F.relu(x_)
-		x_ = self.g_fc4(x_)
-		x_ = F.relu(x_)
+		x_g = self.g(x_full)
 
-		x_g = x_.view(batches, d**4, 256)
+
+		x_g = x_g.view(batches, d**4, 256)
 		x_g = x_g.sum(1).squeeze()
 
-		x_f = self.f_fc1(x_g)
-		x_f = F.relu(x_f)
-		x_f = self.f_fc2(x_f)
-		x_f = F.relu(x_f)
-		x_f = F.dropout(x_f)
-		x_f = self.f_fc3(x_f)
+		x_f = self.f(x_g)
+
 		return x_f
+
+
+class CNN_MLP(Generic_Model):
+	def __init__(self, hyp):
+		super(CNN_MLP, self).__init__(hyp, 'CNN+MLP')
+
+		self.conv = CNN_Module()
+
+
+		# MLP w/ same number of layers and neurons-per-layer as RN
+		# input to MLP is flattened output of CNN
+		# (batch_size)*(24 filters)*5*5
+		self.MLP = nn.Sequential(
+			nn.Linear(24*5**2, 256),
+			nn.Linear(256,256),
+			nn.Linear(256,256),
+			nn.Linear(256,256),
+			nn.Linear(256,256),
+			nn.Linear(256,256),
+			nn.Linear(256,10))
+
+		self.optimizer = optim.Adam(self.parameters(), lr=hyp['lr']) # use Adam gradient descent
+
+	def forward(self, im, q):
+		x = self.conv(im)
+
+		x_flat = x.view(im.shape[0], -1)
+
+		x_out = self.MLP(x_flat)
+
+		return x_out
+
+
+# calculate the number of trainable parameters in a model
+def get_num_params(params):
+	# filter out params that won't be trained
+	params = filter(lambda p: p.requires_grad, params)
+	num = sum(np.prod(p.shape) for p in params)
+	return num
 
 ##############################################################################################
 
@@ -203,8 +234,20 @@ def main():
 	hyper = {	'batch_size': 2,
 				'lr': 0.005		}
 
-	model = RelationNetwork(hyper)
-	print(model)
+	RN_model = RelationNetwork(hyper)
+	print(RN_model)
+
+	MLP_model = CNN_MLP(hyper)
+	print(MLP_model)
+
+	RN_params = RN_model.parameters()
+
+	RN_num = get_num_params(RN_params)
+	print('CNN+RN has {} parameters'.format(RN_num))
+
+	MLP_params = MLP_model.parameters()
+	MLP_num = get_num_params(MLP_params)
+	print('CNN+MLP has {} parameters'.format(MLP_num))
 
 
 
