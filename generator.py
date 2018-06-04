@@ -36,10 +36,8 @@ class SortOfCLEVRGenerator(object):
 	def __init__(self, img_size=75, number_questions=10, number_shapes=6):
 		self.img_size = img_size
 		
-		# shape size is rounded down to even number from img_size/10
-		self.shape_size = int(img_size/10.)
-		if np.mod(self.shape_size, 2) != 0:
-			self.shape_size -= 1
+		# shape size is rounded down img_size/7.5
+		self.shape_size = int(img_size/5.)
 
 		self.number_questions = number_questions # number of questions per category (relational, non-relational)
 		self.number_shapes = number_shapes
@@ -82,9 +80,9 @@ class SortOfCLEVRGenerator(object):
 			center = centers[i]
 			color = self.colors[i]
 			# calculate bounding box for squares and circles (bottom left and top right corners)
-			r = int(self.shape_size/2)
+			r = int(self.shape_size/2.*np.cos(np.pi/4.))
 			bbox = tuple(center-r) + tuple(center+r)
-
+			print(bbox)
 			# if c==1, draw rectangle
 			if choice:
 				draw.rectangle(bbox, fill=color)
@@ -309,7 +307,7 @@ def main():
 	make = True
 
 	if make:
-		dset = generator.create_dataset(train_size=8, test_size=0, val_size=0)
+		dset = generator.create_dataset(train_size=32, test_size=0, val_size=0)
 
 		generator.save_dataset(dset, data_dir=data_dir)
 
