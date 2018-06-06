@@ -31,14 +31,15 @@ def main():
 	# port for Visdom server, cuda availability, number of epochs
 	PORT = 7777
 	CUDA = torch.cuda.is_available()
-	EPOCHS = 4
+	EPOCHS = 10
 
 
 	if CUDA:
 		batch_size = 64
+		log_freq = 50
 	else:
 		batch_size = 2 # for debugging/dummy training on CPU
-
+		log_freq = 5
 	# hyperparameters for RN model (from paper)
 	hyper = {	'batch_size': batch_size,
 				'lr': 1e-4		}
@@ -55,7 +56,7 @@ def main():
 		print('Creating dataset...')
 		gen = SortOfCLEVRGenerator()
 		if CUDA:		made_data = gen.create_dataset() # if on GPU make the whole 10k image set
-		else:			made_data = gen.create_dataset(train_size=8, test_size=4) # small dummy dataset for CPU
+		else:			made_data = gen.create_dataset(train_size=20, test_size=2) # small dummy dataset for CPU
 
 		print('Saving dataset...')
 		os.makedirs(data_dir)
@@ -96,13 +97,13 @@ def main():
 
 
 
-	model = RelationNetwork(hyper) # create CNN+RN
-	model_MLP = CNN_MLP(hyper) # create CNN+MLP
+	RN = RelationNetwork(hyper) # create CNN+RN
+	MLP = CNN_MLP(hyper) # create CNN+MLP
 	
 	# use GPU if available
 	if CUDA:
-		model.cuda()
-		model_MLP.cuda()
+		RN.cuda()
+		MLP.cuda()
 		print('GPU available - will default to using GPU')
 	else:
 		print('GPU unavailable - will default to using CPU')
@@ -160,20 +161,21 @@ def main():
 			MLP_nonrel_acc = 0
 
 			for q in range(num_questions): # forward and backward pass of model on a batch of images and SINGLE question
-				loss, acc = model.train(imgs, questions[:,q,:], labels[:,q])
+				loss, acc = RN.train(imgs, questions[:,q,:], labels[:,q])
 
-				MLP_loss, MLP_acc = model_MLP.train(imgs, questions[:,q,:], labels[:,q])
+				MLP_loss, MLP_acc = MLP.train(imgs, questions[:,q,:], labels[:,q])
 
+				# every (log_freq) batches or epoch, check train accuracy
+				if (it+epoch*iters)%log_freq==0 or iters-it==1:
+					if q%2==0:
+						rel_acc+=float(acc)/(num_questions/2)
+						MLP_rel_acc+=float(MLP_acc)/(num_questions/2)
+					else:
+						nonrel_acc+=float(acc)/(num_questions/2)
+						MLP_nonrel_acc+=float(MLP_acc)/(num_questions/2)
 
-				if q%2==0:
-					rel_acc+=float(acc)/(num_questions/2)
-					MLP_rel_acc+=float(MLP_acc)/(num_questions/2)
-				else:
-					nonrel_acc+=float(acc)/(num_questions/2)
-					MLP_nonrel_acc+=float(MLP_acc)/(num_questions/2)
-
-			# every 5 batches, check test accuracy
-			if (it+epoch*iters)%5==0:
+			# every 50 batches, check test accuracy and log
+			if (it+epoch*iters)%log_freq==0:
 				# test set accuracy
 				test_rel_acc = 0
 				test_nonrel_acc = 0
@@ -181,8 +183,8 @@ def main():
 				test_MLP_nonrel_acc = 0
 
 				for q in range(num_questions):
-					test_acc = model.test(test_imgs, test_questions[:,q,:], test_labels[:,q])
-					MLP_test_acc = model_MLP.test(test_imgs, test_questions[:,q,:], test_labels[:,q])
+					test_acc = RN.test(test_imgs, test_questions[:,q,:], test_labels[:,q])
+					MLP_test_acc = MLP.test(test_imgs, test_questions[:,q,:], test_labels[:,q])
 
 					if q%2==0:
 						test_rel_acc+=float(test_acc)/(num_questions/2)
@@ -191,19 +193,16 @@ def main():
 						test_nonrel_acc+=float(test_acc)/(num_questions/2)
 						test_MLP_nonrel_acc+=float(MLP_test_acc)/(num_questions/2)					
 
-
-			if vis.check_connection():
-				loss_log.update(it+epoch*iters, [float(loss), float(MLP_loss)])
-				train_acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc, MLP_rel_acc, MLP_nonrel_acc])
-				
-				if (it+epoch*iters)%5==0:
+				if vis.check_connection():
+					loss_log.update(it+epoch*iters, [float(loss), float(MLP_loss)])
+					train_acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc, MLP_rel_acc, MLP_nonrel_acc])
 					test_acc_log.update(it+epoch*iters, [test_rel_acc, test_nonrel_acc, test_MLP_rel_acc, test_MLP_nonrel_acc])
 
 
 		print('[CNN+RN][Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(loss), rel_acc, nonrel_acc))
-		print('[CNN_MLP][Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(MLP_loss), MLP_rel_acc, MLP_nonrel_acc))
-		model.save_model(epoch)
-		model_MLP.save_model(epoch)
+		print('[CNN+MLP][Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(MLP_loss), MLP_rel_acc, MLP_nonrel_acc))
+		RN.save_model(epoch)
+		MLP.save_model(epoch)
 		print('Saved model\n')
 
 

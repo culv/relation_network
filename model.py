@@ -194,7 +194,7 @@ class CNN_MLP(Generic_Model):
 		# input to MLP is flattened output of CNN
 		# (batch_size)*(24 filters)*5*5
 		self.MLP = nn.Sequential(
-			nn.Linear(24*5**2, 256),
+			nn.Linear(24*5**2+11, 256),
 			nn.ReLU(),
 			nn.Linear(256,256),
 			nn.ReLU(),
@@ -213,9 +213,11 @@ class CNN_MLP(Generic_Model):
 	def forward(self, im, q):
 		x = self.conv(im)
 
-		x_flat = x.view(im.shape[0], -1)
+		x_flat = x.view(im.shape[0], -1) # flatten conv kernels
 
-		x_out = self.MLP(x_flat)
+		x_flat_and_q = torch.cat((x_flat, q), 1) # append question
+
+		x_out = self.MLP(x_flat_and_q)
 
 		return x_out
 
