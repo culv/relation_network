@@ -17,15 +17,19 @@ class CNN_Module(nn.Module):
 		super(CNN_Module, self).__init__()
 		self.layer1 = nn.Sequential(
 			nn.Conv2d(3,24,3,stride=2,padding=1),
+			nn.ReLU(),
 			nn.BatchNorm2d(24))
 		self.layer2 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
+			nn.ReLU()
 			nn.BatchNorm2d(24))
 		self.layer3 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
+			nn.ReLU(),
 			nn.BatchNorm2d(24))
 		self.layer4 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
+			nn.ReLU(),
 			nn.BatchNorm2d(24))
 
 	# forward pass of conv net
