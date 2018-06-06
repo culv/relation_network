@@ -21,7 +21,7 @@ class CNN_Module(nn.Module):
 			nn.BatchNorm2d(24))
 		self.layer2 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
-			nn.ReLU()
+			nn.ReLU(),
 			nn.BatchNorm2d(24))
 		self.layer3 = nn.Sequential(
 			nn.Conv2d(24,24,3,stride=2,padding=1),
