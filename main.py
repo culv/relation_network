@@ -13,14 +13,15 @@ from torch.utils.data import DataLoader
 from visdom import Visdom
 from tqdm import tqdm # progress meter for loops!
 
-# import MatPlotLib for viewing dataset samples
-import matplotlib as mpl
-mpl.use('TkAgg') # use TkAgg backend to avoid segmentation fault
-import matplotlib.pyplot as plt
 
 import os
 import sys
 import time
+
+
+
+def show_acc_table(table, new_row):
+	pass
 
 
 ############################################################################################################
@@ -31,7 +32,7 @@ def main():
 	# port for Visdom server, cuda availability, number of epochs
 	PORT = 7777
 	CUDA = torch.cuda.is_available()
-	EPOCHS = 10
+	EPOCHS = 1
 
 
 	if CUDA:
@@ -40,6 +41,7 @@ def main():
 	else:
 		batch_size = 2 # for debugging/dummy training on CPU
 		log_freq = 5
+
 	# hyperparameters for RN model (from paper)
 	hyper = {	'batch_size': batch_size,
 				'lr': 1e-4		}
@@ -56,7 +58,7 @@ def main():
 		print('Creating dataset...')
 		gen = SortOfCLEVRGenerator()
 		if CUDA:		made_data = gen.create_dataset() # if on GPU make the whole 10k image set
-		else:			made_data = gen.create_dataset(train_size=20, test_size=2) # small dummy dataset for CPU
+		else:			made_data = gen.create_dataset(train_size=2, test_size=2) # small dummy dataset for CPU
 
 		print('Saving dataset...')
 		os.makedirs(data_dir)
@@ -138,6 +140,7 @@ def main():
 	test_acc_log.add_new(color='green', linelabel='MLP nonrel')
 
 	# training loop
+	start = time.time()
 	for epoch in range(EPOCHS):
 
 		for it in tqdm(range(iters)):
@@ -198,13 +201,19 @@ def main():
 					train_acc_log.update(it+epoch*iters, [rel_acc, nonrel_acc, MLP_rel_acc, MLP_nonrel_acc])
 					test_acc_log.update(it+epoch*iters, [test_rel_acc, test_nonrel_acc, test_MLP_rel_acc, test_MLP_nonrel_acc])
 
+		print('\n[       Epoch {:2d}        |      Training Accuracy      |      Testing Accuracy       ]'.format(epoch))
+		print('[-----------------------|-----------------------------|-----------------------------]')
+		print('[ CNN+RN  | Loss: {:5.2f} | rel: {:5.2f}%, nonrel: {:5.2f}% | rel: {:5.2f}%, nonrel: {:5.2f}% ]'.format(
+			float(loss), rel_acc, nonrel_acc, test_rel_acc, test_nonrel_acc))
+		print('[ CNN+MLP | Loss: {:5.2f} | rel: {:5.2f}%, nonrel: {:5.2f}% | rel: {:5.2f}%, nonrel: {:5.2f}% ]'.format(
+			float(MLP_loss), MLP_rel_acc, MLP_nonrel_acc, test_MLP_rel_acc, test_MLP_nonrel_acc))
 
-		print('[CNN+RN][Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(loss), rel_acc, nonrel_acc))
-		print('[CNN+MLP][Epoch {:d}] loss={:.2f}, rel acc={:.2f}%, nonrel acc={:.2f}%'.format(epoch, float(MLP_loss), MLP_rel_acc, MLP_nonrel_acc))
 		RN.save_model(epoch)
 		MLP.save_model(epoch)
-		print('Saved model\n')
+		print('Saved model(s)\n')
 
+	delta_t = time.time() - start
+	print('Time to train: ', time.strftime('%H:%M:%S', time.gmtime(delta_t)))
 
 if __name__ == '__main__':
 	main()
