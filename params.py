@@ -71,42 +71,41 @@ class BigParams(object):
 								'lr': 			1e-4,		}
 
 		# parameters for convolutional layers	
-		conv1 = [3, 32, 3, 2, 1] # Conv2d params, [in_channels, out_channels, kernel_size, stride, pad]
-		conv2 = [32, 64, 3, 2, 1]
-		conv3 = [64, 128, 3, 2, 1]
-		conv4 = [128, 256, 3, 2, 1]
+		conv1 = [3, 16, 3, 2, 1] # Conv2d params, [in_channels, out_channels, kernel_size, stride, pad]
+		conv2 = [16, 32, 3, 2, 1]
+		conv3 = [32, 64, 3, 2, 1]
+		conv4 = [64, 128, 3, 2, 1]
 
 		self.conv_params = [conv1, conv2, conv3, conv4]
 
 
 		# parameters for g_theta()
 		g1 = [(conv4[1]+2)*2+11, 2000] # FC params, [in, out]
-		g2 = [2000, 2000]
-		g3 = [2000, 2000]
-		g4 = [2000, 2000]
+		g2 = [512, 512]
+		g3 = [512, 512]
+		g4 = [512, 512]
 
 		self.g_params = [g1, g2, g3, g4]
 
 
 		# parameters for f_phi()
-		f1 = [2000, 1000] # FC params, [in, out]
-		f2 = [1000, 500]
-		f3 = [500, 10]
+		f1 = [512, 256] # FC params, [in, out]
+		f2 = [256, 128]
+		f3 = [128, 10]
 
 		self.f_params = [f1, f2, f3]
 
 
 		# parameters for MLP
 		s = conv_out_size(self.conv_params, img_size)
-		print(s)
 
-		m1 = [conv4[1]*s**2+11, 2000] # FC params, [in, out]
-		m2 = [2000, 2000]
-		m3 = [2000, 2000]
-		m4 = [2000, 2000]
-		m5 = [2000, 1000]
-		m6 = [1000, 500]
-		m7 = [500, 10]
+		m1 = [conv4[1]*s**2+11, 512] # FC params, [in, out]
+		m2 = [512, 512]
+		m3 = [512, 512]
+		m4 = [512, 512]
+		m5 = [512, 256]
+		m6 = [256, 128]
+		m7 = [128, 10]
 
 		self.mlp_params = [m1, m2, m3, m4, m5, m6, m7]
 

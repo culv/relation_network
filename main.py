@@ -29,7 +29,7 @@ def main():
 	# port for Visdom server, cuda availability, number of epochs
 	PORT = 7777
 	CUDA = torch.cuda.is_available()
-	EPOCHS = 1
+	EPOCHS = 10
 
 	# hyperparameters for RN model (from paper)
 	from params import BigParams
@@ -84,7 +84,7 @@ def main():
 
 
 	iters = int(train_dataset.__len__() / hyper['batch_size']) # of batches per epoch
-	log_freq = np.max(1, int(iters/3)) # frequency of Visdom logging (3 times per epoch, unless an epoch is less than 3 iters)
+	log_freq = max(1, int(iters/3)) # frequency of Visdom logging (3 times per epoch, unless an epoch is less than 3 iters)
 
 	RN = RelationNetwork(hyper, P.conv_params, P.g_params, P.f_params) # create CNN+RN
 	MLP = CNN_MLP(hyper, P.conv_params, P.mlp_params) # create CNN+MLP
