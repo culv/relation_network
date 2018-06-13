@@ -20,9 +20,6 @@ import time
 
 
 
-def show_acc_table(table, new_row):
-	pass
-
 
 ############################################################################################################
 
@@ -34,31 +31,22 @@ def main():
 	CUDA = torch.cuda.is_available()
 	EPOCHS = 1
 
-
-	if CUDA:
-		batch_size = 64
-		log_freq = 50
-	else:
-		batch_size = 2 # for debugging/dummy training on CPU
-		log_freq = 5
-
 	# hyperparameters for RN model (from paper)
-	hyper = {	'batch_size': batch_size,
-				'lr': 1e-4		}
-
+	from params import BigParams
+	P = BigParams()
+	hyper = P.hyper_params
 
 	# get full path to HDF5 file of data
 	curr_dir = os.path.dirname(os.path.realpath(__file__))
 	data_dir = os.path.join(curr_dir, 'data')
 	data_fname = 'sort-of-clevr.h5'
 
-
-	# create dataset of it doesn't already exist
+	# create dataset if it doesn't already exist
 	if not os.path.exists(data_dir):
 		print('Creating dataset...')
 		gen = SortOfCLEVRGenerator()
 		if CUDA:		made_data = gen.create_dataset() # if on GPU make the whole 10k image set
-		else:			made_data = gen.create_dataset(train_size=2, test_size=2) # small dummy dataset for CPU
+		else:			made_data = gen.create_dataset(train_size=10, test_size=2) # small dummy dataset for CPU
 
 		print('Saving dataset...')
 		os.makedirs(data_dir)
@@ -96,11 +84,10 @@ def main():
 
 
 	iters = int(train_dataset.__len__() / hyper['batch_size']) # of batches per epoch
+	log_freq = np.max(1, int(iters/3)) # frequency of Visdom logging (3 times per epoch, unless an epoch is less than 3 iters)
 
-
-
-	RN = RelationNetwork(hyper) # create CNN+RN
-	MLP = CNN_MLP(hyper) # create CNN+MLP
+	RN = RelationNetwork(hyper, P.conv_params, P.g_params, P.f_params) # create CNN+RN
+	MLP = CNN_MLP(hyper, P.conv_params, P.mlp_params) # create CNN+MLP
 	
 	# use GPU if available
 	if CUDA:
